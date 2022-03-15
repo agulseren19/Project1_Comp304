@@ -379,13 +379,25 @@ int process_command(struct command_t *command)
 		command->args[command->arg_count - 1] = NULL;
 
 		/// TODO: do your own exec with path resolving using execv()
-
+		char path[100]= "/usr/bin/";
+		char *commanda = command->args[0];
+		strcat(path, commanda);
+		char *argument[command->arg_count];
+		argument[0]=path;
+		for(int i=1;command->args[i]!=NULL;i++){
+			argument[i]=command->args[i];
+			printf("%s",argument[i]);
+		}
+		argument[command->arg_count-1]=NULL;
+		execv(path,argument);
 		exit(0);
 	}
 	else
 	{
 		/// TODO: Wait for child to finish if command is not running in background
-
+		if(!command->background){
+		wait(NULL);
+		}
 		return SUCCESS;
 	}
 
