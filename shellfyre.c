@@ -6,8 +6,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <dirent.h>
+void recursive_filesearch(char* search,char* dirNew);
 const char *sysname = "shellfyre";
-
 enum return_codes
 {
 	SUCCESS = 0,
@@ -360,14 +361,46 @@ int process_command(struct command_t *command)
 	}
 
 	// TODO: Implement your custom commands here
-
+	if (strcmp(command->name, "filesearch") == 0)
+	{
+		if(strcmp(command->args[0],"-o")==0){
+			DIR *dir;
+			struct dirent *dirElement;
+			dir=opendir(".");
+			if(dir){
+				while((dirElement=readdir(dir))!=NULL){
+					if(strstr(dirElement->d_name,command->args[1])!=NULL){
+						printf("./%s \n",dirElement->d_name);
+						fopen(dirElement->d_name,"r");
+					}
+				}
+				closedir(dir);
+			}
+		}
+		else if(strcmp(command->args[0],"-r")==0){
+			recursive_filesearch(command->args[1],".");	
+		}
+		else{
+			DIR *dir;
+			struct dirent *dirElement;
+			dir=opendir(".");
+			if(dir){
+				while((dirElement=readdir(dir))!=NULL){
+					if(strstr(dirElement->d_name,command->args[0])!=NULL){
+						printf("./%s \n",dirElement->d_name);
+					}
+				}
+				closedir(dir);
+			}
+		}
+	}
 	pid_t pid = fork();
 
 	if (pid == 0) // child
 	{
 		// increase args size by 2
 		command->args = (char **)realloc(
-			command->args, sizeof(char *) * (command->arg_count += 2));
+				command->args, sizeof(char *) * (command->arg_count += 2));
 
 		// shift everything forward by 1
 		for (int i = command->arg_count - 2; i > 0; --i)
@@ -386,7 +419,6 @@ int process_command(struct command_t *command)
 		argument[0]=path;
 		for(int i=1;command->args[i]!=NULL;i++){
 			argument[i]=command->args[i];
-			printf("%s",argument[i]);
 		}
 		argument[command->arg_count-1]=NULL;
 		execv(path,argument);
@@ -396,7 +428,7 @@ int process_command(struct command_t *command)
 	{
 		/// TODO: Wait for child to finish if command is not running in background
 		if(!command->background){
-		wait(NULL);
+			wait(NULL);
 		}
 		return SUCCESS;
 	}
@@ -404,3 +436,29 @@ int process_command(struct command_t *command)
 	printf("-%s: %s: command not found\n", sysname, command->name);
 	return UNKNOWN;
 }
+void recursive_filesearch(char* search,char* dirNew){
+	char directory[1000];
+	DIR *dir;
+	struct dirent *dirElement;
+	dir=opendir(dirNew);
+
+	if(!dir){
+	exit(0);
+	}
+	if(dir){
+		while((dirElement=readdir(dir))!=NULL){
+			if(strstr(dirElement->d_name,search)!=NULL){
+			printf("%s/%s \n",dirNew,dirElement->d_name);
+			}	
+			if(dirElement->d_type==4 && strcmp(dirElement->d_name, "..") != 0 && strcmp(dirElement->d_name, ".") != 0){
+				strcpy(directory,dirNew);
+				strcat(directory,"/");
+				strcat(directory,dirElement->d_name);
+				recursive_filesearch(search,directory);
+			}
+		
+		}
+		closedir(dir);
+	}
+}
+
