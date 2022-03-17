@@ -10,6 +10,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 void recursive_filesearch(char* search,char* dirNew);
+void openFile(char *fileName);
+
 const char *sysname = "shellfyre";
 enum return_codes
 {
@@ -374,7 +376,7 @@ int process_command(struct command_t *command)
 				while((dirElement=readdir(dir))!=NULL){
 					if(strstr(dirElement->d_name,command->args[1])!=NULL){
 						printf("./%s \n",dirElement->d_name);
-						fopen(dirElement->d_name,"r");
+						openFile(dirElement->d_name);
 					}
 				}
 				closedir(dir);
@@ -480,3 +482,13 @@ void recursive_filesearch(char* search,char* dirNew){
 	}
 }
 
+void openFile(char *fileName){
+	pid_t pid;
+	pid = fork();
+	if (pid == 0) {
+	execlp("xdg-open", "xdg-open", fileName, NULL);
+	}
+	else if (pid > 0) {
+		wait(NULL);
+	}
+}
