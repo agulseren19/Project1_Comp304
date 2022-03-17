@@ -13,6 +13,17 @@ void recursive_filesearch(char* search,char* dirNew);
 void openFile(char *fileName);
 
 const char *sysname = "shellfyre";
+
+struct recentList
+{
+    int size;
+	char recentArr[1000][1000];
+};
+
+struct recentList *recentCd;
+void readCdh();
+int enteredCdh=1;
+
 enum return_codes
 {
 	SUCCESS = 0,
@@ -294,7 +305,6 @@ int prompt(struct command_t *command)
 		}
 		else
 			multicode_state = 0;
-
 		putchar(c); // echo the character
 		buf[index++] = c;
 		if (index >= sizeof(buf) - 1)
@@ -323,6 +333,9 @@ int process_command(struct command_t *command);
 
 int main()
 {
+    recentCd = malloc(sizeof (struct recentList));
+//    recentCd->recentArr = (char **)malloc(10*sizeof(char *));
+    recentCd->size = 0;
 	while (1)
 	{
 		struct command_t *command = malloc(sizeof(struct command_t));
@@ -330,12 +343,15 @@ int main()
 
 		int code;
 		code = prompt(command);
-		if (code == EXIT)
-			break;
-
+		enteredCdh=1;
+		if (code == EXIT){
+			free(recentCd);
+			break;}
 		code = process_command(command);
-		if (code == EXIT)
+		if (code == EXIT){
+			free(recentCd);
 			break;
+			}
 
 		free_command(command);
 	}
@@ -360,6 +376,11 @@ int process_command(struct command_t *command)
 			r = chdir(command->args[0]);
 			if (r == -1)
 				printf("-%s: %s: %s\n", sysname, command->name, strerror(errno));
+		char cwdNew[100];
+            if (getcwd(cwdNew, sizeof(cwdNew)) != NULL){
+               strcpy(*(recentCd->recentArr+recentCd->size), cwdNew);
+                recentCd->size=  recentCd->size+1;
+            }
 			return SUCCESS;
 		}
 	}
@@ -399,10 +420,26 @@ int process_command(struct command_t *command)
 			}
 		}
 	}
-	
+    //CDH
+   if (strcmp(command->name, "cdh") == 0&&enteredCdh==1){
+   if (command->arg_count >= 0)
+		{
+       readCdh();
+       char buf[5]="";
+	printf("Select directory by letter or number: ");
+	fgets(buf, sizeof buf, stdin);
+		if(chdir(recentCd->recentArr[recentCd->size-atoi(buf)])==-1){
+			printf("error");
+		}
+       enteredCdh=0;
+      return SUCCESS;
+      }
+   }
 	//TAKE
 		if (strcmp(command->name, "take") == 0)
 	{
+	   if (command->arg_count >= 0)
+		{
 	char* dirInput=strtok(command->args[0],"/");
    	while( dirInput != NULL ) {
      	if(chdir(dirInput)==-1){
@@ -412,6 +449,8 @@ int process_command(struct command_t *command)
      	}
      	dirInput = strtok(NULL, "/");
     }
+      return SUCCESS;
+      }
    }
 	
 	pid_t pid = fork();
@@ -432,7 +471,7 @@ int process_command(struct command_t *command)
 		command->args[command->arg_count - 1] = NULL;
 
 		/// TODO: do your own exec with path resolving using execv()
-		char path[100]= "/usr/bin/";
+		char path[1000]= "/usr/bin/";
 		char *commanda = command->args[0];
 		strcat(path, commanda);
 		char *argument[command->arg_count];
@@ -491,4 +530,19 @@ void openFile(char *fileName){
 	else if (pid > 0) {
 		wait(NULL);
 	}
+}
+void readCdh(){
+        int count = 10;
+    if(recentCd->size<10){
+    count=recentCd->size;
+    }
+    int arrSize = 0;
+    int size=count;
+    
+    while(arrSize<=recentCd->size -1 && count>0) {
+         printf("%c %d) %s\n",'a'+count-1,count ,recentCd->recentArr[recentCd->size-size+arrSize]);
+         count --;
+         arrSize ++;
+    }
+
 }
