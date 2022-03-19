@@ -452,6 +452,35 @@ int process_command(struct command_t *command)
       return SUCCESS;
       }
    }
+   //AWESOME COMMANDS
+   //addtofiles: Adds the string (which is given as command line argument) to the last line of each regular file in that directory
+   //For example, you can add your name to each file easily using this command.
+   if (strcmp(command->name, "addtofiles") == 0)
+	{
+	   if (command->arg_count > 0)
+		{
+			DIR *dir;
+			struct dirent *dirElement;
+			dir=opendir(".");
+			if(dir){
+				while((dirElement=readdir(dir))!=NULL){
+					if(dirElement->d_type==8){
+						 FILE *fPtr;
+  		 					if ((fPtr = fopen(dirElement->d_name,"a")) == NULL){
+  		 					printf("Could not open file");
+  		 					}
+  		 					for(int i=0;i<command->arg_count;i++){
+  		 					 fprintf(fPtr,"\n %s",command->args[i]);
+  		 					 }
+   							fclose(fPtr);
+		
+					}
+				}
+				closedir(dir);
+			}
+		      return SUCCESS;
+      }
+   }
 	
 	pid_t pid = fork();
 
