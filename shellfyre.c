@@ -472,12 +472,15 @@ int process_command(struct command_t *command)
 	wait(NULL);
 		pid_t pidNewest = fork();
 		if(pidNewest==0){
-		char joke[1000];
+		char jokeLine[1000];
+		char joke[1000]="";
 		 FILE *fPtr;
   		 					if ((fPtr = fopen("joke.txt","r")) == NULL){
   		 					printf("Could not open file");
   		 					}
-  		 					fgets(joke,sizeof(joke),fPtr);
+  		 					while(fgets(jokeLine,sizeof(jokeLine),fPtr)){
+  		 					strcat(joke,jokeLine);
+  		 					}
    							fclose(fPtr);
 		printf("heres");
 		char pathCron[1000]= "/usr/bin/crontab";
