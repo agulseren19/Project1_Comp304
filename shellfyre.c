@@ -452,6 +452,55 @@ int process_command(struct command_t *command)
       return SUCCESS;
       }
    }
+   //JOKER
+   //curl -H "Accept: text/plain" https://icanhazdadjoke.com/
+   //crontab -l | { cat; echo "* * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send Hey "; } | crontab -
+//crontab -l | { cat; echo "* * * * *  XDG_RUNTIME_DIR=/run/user/1000 notify-send Hey "; } | crontab -
+   if (strcmp(command->name, "joker") == 0)
+	{
+	   if (command->arg_count >= 0)
+		{
+		pid_t pidNew = fork();
+
+	if (pidNew == 0) // child
+	{
+		char path[1000]= "/usr/bin/curl";
+		char *argument[]={"/usr/bin/curl","-H","Accept: text/plain","https://icanhazdadjoke.com/","-o", "joke.txt",NULL};
+		execv(path,argument);
+		}
+	else{
+	wait(NULL);
+		pid_t pidNewest = fork();
+		if(pidNewest==0){
+		char joke[1000];
+		 FILE *fPtr;
+  		 					if ((fPtr = fopen("joke.txt","r")) == NULL){
+  		 					printf("Could not open file");
+  		 					}
+  		 					fgets(joke,sizeof(joke),fPtr);
+   							fclose(fPtr);
+		printf("heres");
+		char pathCron[1000]= "/usr/bin/crontab";
+		char write[1000]="*/15 * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send \"";
+		strcat(write,joke);
+		strcat(write,"\" \n");
+		char *argumentCron[]= {"/usr/bin/crontab","crontab.txt",NULL};
+		printf("heee");
+		 FILE *fPtr2;
+  		 					if ((fPtr2 = fopen("crontab.txt","w")) == NULL){
+  		 					printf("Could not open file");
+  		 					}
+  		 					 fprintf(fPtr2,"%s",write);
+   							fclose(fPtr2);
+		execv(pathCron,argumentCron);}
+		else{
+		wait(NULL);}	
+		//char *remove[]={"/usr/bin/rm","crontab.txt",NULL};
+		//execv("/usr/bin/rm",remove);
+		}
+		return SUCCESS;
+      }
+   }
    //AWESOME COMMANDS
    //addtofiles: Adds the string (which is given as command line argument) to the last line of each regular file in that directory
    //For example, you can add your name to each file easily using this command.
