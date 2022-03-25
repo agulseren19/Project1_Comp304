@@ -549,18 +549,39 @@ int process_command(struct command_t *command)
 		      return SUCCESS;
       }
    }
-		   if (strcmp(command->name, "pstraverse") == 0)
+	   if (strcmp(command->name, "pstraverse") == 0)
 	{
 	   if (command->arg_count > 0)
 		{
+		char input[100];
+		char pidStr[100];
+		char bd[100];
+		char opti[100];
+		char optioStr[100];
+		long pidin=strtol(command->args[1],NULL,10);
+		int optio=0;
+		sprintf(pidStr,"%d",(int)pidin);
 		pid_t pidCh=fork();
 		if(pidCh==0){
-		//char *insmod[] = {"/usr/bin/sudo","insmod","my_module.ko",strtol(command->args[0],NULL,10),0};
-		//execv(insmod[0],insmod);
+		strcpy(input,"pidin=");
+		strcat(input,pidStr);
+		strcpy(bd,command->args[0]);
+		if(bd[1]=='b'){
+		optio=0;
+		}
+		else if(bd[1]=='d'){
+		optio=1;
+		}
+		sprintf(optioStr,"%d",(int)optio);
+		strcpy(opti,"opti=");
+		strcat(opti,optioStr);
+		char *insmod[] = {"/usr/bin/sudo","insmod","pstraverse_module.ko",input,opti,NULL};
+		execv(insmod[0],insmod);
 		}
 		else{
 		wait(NULL);
 		}
+		return SUCCESS;
 		}}
 	pid_t pid = fork();
 
