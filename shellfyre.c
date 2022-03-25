@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 void recursive_filesearch(char* search,char* dirNew);
+void open_recursive_filesearch(char* search,char* dirNew);
 void openFile(char *fileName);
 
 const char *sysname = "shellfyre";
@@ -389,7 +390,16 @@ int process_command(struct command_t *command)
 	//FILESEARCH
 	if (strcmp(command->name, "filesearch") == 0)
 	{
-		if(strcmp(command->args[0],"-o")==0){
+	if (command->arg_count > 0)
+		{
+
+		if((strcmp(command->args[0],"-r")==0&&strcmp(command->args[1],"-o")==0)||(strcmp(command->args[0],"-o")==0&&strcmp(command->args[1],"-r")==0)){
+
+			open_recursive_filesearch(command->args[2],".");	
+			      return SUCCESS;
+		}
+		else if(strcmp(command->args[0],"-o")==0){
+
 			DIR *dir;
 			struct dirent *dirElement;
 			dir=opendir(".");
@@ -402,11 +412,15 @@ int process_command(struct command_t *command)
 				}
 				closedir(dir);
 			}
+						      return SUCCESS;
 		}
 		else if(strcmp(command->args[0],"-r")==0){
-			recursive_filesearch(command->args[1],".");	
+
+			recursive_filesearch(command->args[1],".");
+						      return SUCCESS;	
 		}
 		else{
+
 			DIR *dir;
 			struct dirent *dirElement;
 			dir=opendir(".");
@@ -419,6 +433,8 @@ int process_command(struct command_t *command)
 				closedir(dir);
 			}
 		}
+		return SUCCESS;
+	}
 	}
     //CDH
    if (strcmp(command->name, "cdh") == 0&&enteredCdh==1){
@@ -533,7 +549,19 @@ int process_command(struct command_t *command)
 		      return SUCCESS;
       }
    }
-	
+		   if (strcmp(command->name, "pstraverse") == 0)
+	{
+	   if (command->arg_count > 0)
+		{
+		pid_t pidCh=fork();
+		if(pidCh==0){
+		//char *insmod[] = {"/usr/bin/sudo","insmod","my_module.ko",strtol(command->args[0],NULL,10),0};
+		//execv(insmod[0],insmod);
+		}
+		else{
+		wait(NULL);
+		}
+		}}
 	pid_t pid = fork();
 
 	if (pid == 0) // child
@@ -602,6 +630,43 @@ void recursive_filesearch(char* search,char* dirNew){
 	}
 }
 
+void open_recursive_filesearch(char* search,char* dirNew){
+	char directory2[1000]="";
+	char opendirectory[1000]="";
+	DIR *dir;
+	struct dirent *dirElement;
+	dir=opendir(dirNew);
+
+	if(!dir){
+	exit(0);
+	}
+	if(dir){
+		while((dirElement=readdir(dir))!=NULL){
+
+			if(strstr(dirElement->d_name,search)!=NULL){
+				if(dirNew[1]!='/'){
+				openFile(dirElement->d_name);
+				}
+				else{
+				strcpy(opendirectory,dirNew);
+				strcat(opendirectory,"/");
+				strcat(opendirectory,dirElement->d_name);
+				openFile(opendirectory);
+				}
+				printf("%s/%s \n",dirNew,dirElement->d_name);
+
+			}	
+			if(dirElement->d_type==4 && strcmp(dirElement->d_name, "..") != 0 && strcmp(dirElement->d_name, ".") != 0){
+				strcpy(directory2,dirNew);
+				strcat(directory2,"/");
+				strcat(directory2,dirElement->d_name);
+				open_recursive_filesearch(search,directory2);
+			}
+		
+		}	
+		closedir(dir);
+	}
+}
 void openFile(char *fileName){
 	pid_t pid;
 	pid = fork();
