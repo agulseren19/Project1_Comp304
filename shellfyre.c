@@ -9,11 +9,18 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <ctype.h>
+
 void recursive_filesearch(char* search,char* dirNew);
 void open_recursive_filesearch(char* search,char* dirNew);
 void openFile(char *fileName);
 
+void saveCdh();
+void loadCdh();
+
 const char *sysname = "shellfyre";
+char currentDir[100];
+
 
 struct recentList
 {
@@ -337,6 +344,12 @@ int main()
     recentCd = malloc(sizeof (struct recentList));
 //    recentCd->recentArr = (char **)malloc(10*sizeof(char *));
     recentCd->size = 0;
+	char cwdDir[100];
+    if (getcwd(cwdDir, sizeof(cwdDir)) != NULL){
+        strcpy(currentDir, cwdDir);
+    }
+    loadCdh();
+
 	while (1)
 	{
 		struct command_t *command = malloc(sizeof(struct command_t));
@@ -367,8 +380,14 @@ int process_command(struct command_t *command)
 	if (strcmp(command->name, "") == 0)
 		return SUCCESS;
 
-	if (strcmp(command->name, "exit") == 0)
+	if (strcmp(command->name, "exit") == 0){
+		if(chdir(currentDir)!=-1){
+    
+    		saveCdh();
+    	}
 		return EXIT;
+	}
+		
 
 	if (strcmp(command->name, "cd") == 0)
 	{
@@ -442,9 +461,16 @@ int process_command(struct command_t *command)
 		{
        readCdh();
        char buf[5]="";
+	    int dirToChange;
 	printf("Select directory by letter or number: ");
 	fgets(buf, sizeof buf, stdin);
-		if(chdir(recentCd->recentArr[recentCd->size-atoi(buf)])==-1){
+	if(isalpha(buf[0])){
+    	dirToChange= buf[0]-'a'+1;
+    	dirToChange = recentCd->size - dirToChange;
+    }else{
+    	dirToChange= recentCd->size-atoi(buf);
+    }
+		if(chdir(recentCd->recentArr[dirToChange])==-1){
 			printf("error");
 		}
        enteredCdh=0;
@@ -521,6 +547,7 @@ int process_command(struct command_t *command)
       }
    }
    //AWESOME COMMANDS
+   //Aslıhan
    //addtofiles: Adds the string (which is given as command line argument) to the last line of each regular file in that directory
    //For example, you can add your name to each file easily using this command.
    if (strcmp(command->name, "addtofiles") == 0)
@@ -549,6 +576,99 @@ int process_command(struct command_t *command)
 		      return SUCCESS;
       }
    }
+   //Begum
+   //morse: Given a .txt file name as command line argument, my awesome command will convert your files
+   //which contains the name into morse code and create a new file called morse_{name}.txt for you to see
+   // Please refer to the REPORT to see which characters are allowed in the .txt file
+	   if (strcmp(command->name, "morse") == 0)
+   {
+	   if (command->arg_count >0){
+       char *charMorse[] = {
+        ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---", 
+        "-.-", ".-..", "--", "-.", "---", ".--.", "--.-", ".-.", "...", "-", 
+        "..-", "...-", ".--", "-..-", "-.--", "--.." 
+        };
+        char *numMorse[]={
+        "-----", ".----", "..---", "...--", "....-",
+        ".....", "-....", "--...", "---..", "----."
+        };
+        
+        char special[127][127];
+        strcpy(special[38],".-...");
+        strcpy(special[39], ".----.");
+        strcpy(special[64], ".--.-.");
+        strcpy(special[41] , "-.--.-");
+        strcpy(special[40] , "-.--.");
+        strcpy(special[58] , "---...");
+        strcpy(special[44] , "--..--");
+        strcpy(special[61], "-...-");
+        strcpy(special[33] , "-.-.--");
+        strcpy(special[46] , ".-.-.-");
+        strcpy(special[45] , "-....-");
+        strcpy(special[37] , "------..-.-----");
+        strcpy(special[43],".-.-.");
+        strcpy(special[34] , ".-..-.");
+        strcpy(special[63],"..--..");
+        strcpy(special[47], "-..-.");
+        strcpy(special[59], "-.-.-.");
+        
+       if (command->arg_count > 0){
+           
+           FILE *fPtrTxt;
+           FILE *fPtrMorse;
+            DIR *dir;
+            struct dirent *dirElement;
+            dir=opendir(".");
+            if(dir){
+                while((dirElement=readdir(dir))!=NULL){
+                    if(strstr(dirElement->d_name,command->args[0])!=NULL && strstr(dirElement->d_name,"morse_")==NULL){
+                        char fileToOpen[100];
+                        strcpy(fileToOpen,dirElement->d_name);
+                        char morseTxt[100]= "morse_";
+                        strcat(morseTxt,fileToOpen);
+                    
+
+  if ((fPtrTxt = fopen(fileToOpen,"r")) == NULL || (fPtrMorse = fopen(morseTxt,"w"))== NULL){
+        printf("Could not open file\n");
+    }else {
+           char c;
+           c= fgetc(fPtrTxt);
+           while(c != EOF){
+         
+               if(isalpha(c)){
+                   fprintf(fPtrMorse,"%s ",charMorse[tolower(c)-'a']);
+          
+               }
+               else if(isdigit(c)){
+                   fprintf(fPtrMorse,"%s ",numMorse[c-'0']);
+               }
+               else if(c=='\n')
+               {
+                   fprintf(fPtrMorse,"%c",'\n');
+               }
+               else if(c==' ')
+               {
+                   fprintf(fPtrMorse,"%s","   ");
+               }else{
+                
+                fprintf(fPtrMorse,"%s ",special[(int) c]);
+               }
+               c= fgetc(fPtrTxt);
+    
+           }
+            fclose(fPtrTxt);
+            fclose(fPtrMorse);
+      }
+               }
+               
+           }
+
+        }
+        closedir(dir);
+    }
+    }
+   }
+	  
 	   if (strcmp(command->name, "pstraverse") == 0)
 	{
 	   if (command->arg_count > 0)
@@ -712,4 +832,43 @@ void readCdh(){
          arrSize ++;
     }
 
+}
+
+void saveCdh(){
+ FILE *fPtrCdh;
+ if ((fPtrCdh = fopen("savedCdh.txt","w")) == NULL ){
+  printf("Could not open file\n");
+ }else {
+  int count = 10;
+    if(recentCd->size<10){
+    count=recentCd->size;
+    }
+    int arrSize = 0;
+    int size=count;
+    
+    while(arrSize<=recentCd->size -1 && count>0) {
+    fprintf(fPtrCdh, "%s\n", recentCd->recentArr[recentCd->size-size+arrSize]);
+         count --;
+         arrSize ++;
+    }
+    fclose(fPtrCdh);
+ }
+
+}
+
+void loadCdh(){
+ FILE *fPtrCdh;
+ char line[100];
+ 
+ if ((fPtrCdh = fopen("savedCdh.txt","r")) == NULL ){
+	 printf("No cd history");
+ }else {
+
+while(fgets(line,sizeof(line),fPtrCdh)){
+line[strlen(line) - 1] = '\0';
+strcpy(*(recentCd->recentArr+recentCd->size), line);
+       recentCd->size=  recentCd->size+1;
+}
+fclose(fPtrCdh);
+}
 }
