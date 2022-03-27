@@ -1,3 +1,4 @@
+//Aslıhan Gülseren 71790 & Begüm Şen 72840
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdio.h>
@@ -20,11 +21,11 @@ void loadCdh();
 
 const char *sysname = "shellfyre";
 char currentDir[100];
-
+int moduleLoaded=0;
 
 struct recentList
 {
-    int size;
+	int size;
 	char recentArr[1000][1000];
 };
 
@@ -341,14 +342,14 @@ int process_command(struct command_t *command);
 
 int main()
 {
-    recentCd = malloc(sizeof (struct recentList));
-//    recentCd->recentArr = (char **)malloc(10*sizeof(char *));
-    recentCd->size = 0;
+	recentCd = malloc(sizeof (struct recentList));
+	//    recentCd->recentArr = (char **)malloc(10*sizeof(char *));
+	recentCd->size = 0;
 	char cwdDir[100];
-    if (getcwd(cwdDir, sizeof(cwdDir)) != NULL){
-        strcpy(currentDir, cwdDir);
-    }
-    loadCdh();
+	if (getcwd(cwdDir, sizeof(cwdDir)) != NULL){
+		strcpy(currentDir, cwdDir);
+	}
+	loadCdh();
 
 	while (1)
 	{
@@ -365,7 +366,7 @@ int main()
 		if (code == EXIT){
 			free(recentCd);
 			break;
-			}
+		}
 
 		free_command(command);
 	}
@@ -382,12 +383,21 @@ int process_command(struct command_t *command)
 
 	if (strcmp(command->name, "exit") == 0){
 		if(chdir(currentDir)!=-1){
-    
-    		saveCdh();
-    	}
+
+			saveCdh();
+		}
+		if(moduleLoaded==1){
+		pid_t pid=fork();
+		if(pid==0){
+		char *rmmod[] = {"/usr/bin/sudo","rmmod","pstraverse_module.ko",NULL};
+		execv(rmmod[0],rmmod);
+		}
+		else{
+		wait(NULL);
+	}}
 		return EXIT;
 	}
-		
+
 
 	if (strcmp(command->name, "cd") == 0)
 	{
@@ -396,11 +406,11 @@ int process_command(struct command_t *command)
 			r = chdir(command->args[0]);
 			if (r == -1)
 				printf("-%s: %s: %s\n", sysname, command->name, strerror(errno));
-		char cwdNew[100];
-            if (getcwd(cwdNew, sizeof(cwdNew)) != NULL){
-               strcpy(*(recentCd->recentArr+recentCd->size), cwdNew);
-                recentCd->size=  recentCd->size+1;
-            }
+			char cwdNew[100];
+			if (getcwd(cwdNew, sizeof(cwdNew)) != NULL){
+				strcpy(*(recentCd->recentArr+recentCd->size), cwdNew);
+				recentCd->size=  recentCd->size+1;
+			}
 			return SUCCESS;
 		}
 	}
@@ -409,150 +419,152 @@ int process_command(struct command_t *command)
 	//FILESEARCH
 	if (strcmp(command->name, "filesearch") == 0)
 	{
-	if (command->arg_count > 0)
+		if (command->arg_count > 0)
 		{
 
-		if((strcmp(command->args[0],"-r")==0&&strcmp(command->args[1],"-o")==0)||(strcmp(command->args[0],"-o")==0&&strcmp(command->args[1],"-r")==0)){
+			if((strcmp(command->args[0],"-r")==0&&strcmp(command->args[1],"-o")==0)||(strcmp(command->args[0],"-o")==0&&strcmp(command->args[1],"-r")==0)){
 
-			open_recursive_filesearch(command->args[2],".");	
-			      return SUCCESS;
-		}
-		else if(strcmp(command->args[0],"-o")==0){
-
-			DIR *dir;
-			struct dirent *dirElement;
-			dir=opendir(".");
-			if(dir){
-				while((dirElement=readdir(dir))!=NULL){
-					if(strstr(dirElement->d_name,command->args[1])!=NULL){
-						printf("./%s \n",dirElement->d_name);
-						openFile(dirElement->d_name);
-					}
-				}
-				closedir(dir);
+				open_recursive_filesearch(command->args[2],".");	
+				return SUCCESS;
 			}
-						      return SUCCESS;
-		}
-		else if(strcmp(command->args[0],"-r")==0){
+			else if(strcmp(command->args[0],"-o")==0){
 
-			recursive_filesearch(command->args[1],".");
-						      return SUCCESS;	
+				DIR *dir;
+				struct dirent *dirElement;
+				dir=opendir(".");
+				if(dir){
+					while((dirElement=readdir(dir))!=NULL){
+						if(strstr(dirElement->d_name,command->args[1])!=NULL){
+							printf("./%s \n",dirElement->d_name);
+							openFile(dirElement->d_name);
+						}
+					}
+					closedir(dir);
+				}
+				return SUCCESS;
+			}
+			else if(strcmp(command->args[0],"-r")==0){
+
+				recursive_filesearch(command->args[1],".");
+				return SUCCESS;	
+			}
+			else{
+
+				DIR *dir;
+				struct dirent *dirElement;
+				dir=opendir(".");
+				if(dir){
+					while((dirElement=readdir(dir))!=NULL){
+						if(strstr(dirElement->d_name,command->args[0])!=NULL){
+							printf("./%s \n",dirElement->d_name);
+						}
+					}
+					closedir(dir);
+				}
+			}
+			return SUCCESS;
+		}
+	}
+	//CDH
+	if (strcmp(command->name, "cdh") == 0&&enteredCdh==1){
+		if (command->arg_count >= 0)
+		{
+		if (recentCd->size == 0){
+		printf("There is no cd history \n");
 		}
 		else{
-
-			DIR *dir;
-			struct dirent *dirElement;
-			dir=opendir(".");
-			if(dir){
-				while((dirElement=readdir(dir))!=NULL){
-					if(strstr(dirElement->d_name,command->args[0])!=NULL){
-						printf("./%s \n",dirElement->d_name);
-					}
-				}
-				closedir(dir);
+			readCdh();
+			char buf[5]="";
+			int dirToChange;
+			printf("Select directory by letter or number: ");
+			fgets(buf, sizeof buf, stdin);
+			if(isalpha(buf[0])){
+				dirToChange= buf[0]-'a'+1;
+				dirToChange = recentCd->size - dirToChange;
+			}else{
+				dirToChange= recentCd->size-atoi(buf);
 			}
+			if(chdir(recentCd->recentArr[dirToChange])==-1){
+				printf("error");
+			}
+			enteredCdh=0;}
+			return SUCCESS;
 		}
-		return SUCCESS;
 	}
-	}
-    //CDH
-   if (strcmp(command->name, "cdh") == 0&&enteredCdh==1){
-   if (command->arg_count >= 0)
-		{
-       readCdh();
-       char buf[5]="";
-	    int dirToChange;
-	printf("Select directory by letter or number: ");
-	fgets(buf, sizeof buf, stdin);
-	if(isalpha(buf[0])){
-    	dirToChange= buf[0]-'a'+1;
-    	dirToChange = recentCd->size - dirToChange;
-    }else{
-    	dirToChange= recentCd->size-atoi(buf);
-    }
-		if(chdir(recentCd->recentArr[dirToChange])==-1){
-			printf("error");
-		}
-       enteredCdh=0;
-      return SUCCESS;
-      }
-   }
 	//TAKE
-		if (strcmp(command->name, "take") == 0)
+	if (strcmp(command->name, "take") == 0)
 	{
-	   if (command->arg_count >= 0)
+		if (command->arg_count >= 0)
 		{
-	char* dirInput=strtok(command->args[0],"/");
-   	while( dirInput != NULL ) {
-     	if(chdir(dirInput)==-1){
-     	//Directory doesn't exist. Create directory
-     	mkdir(dirInput, 0755);
-     	chdir(dirInput);
-     	}
-     	dirInput = strtok(NULL, "/");
-    }
-      return SUCCESS;
-      }
-   }
-   //JOKER
-   //curl -H "Accept: text/plain" https://icanhazdadjoke.com/
-   //crontab -l | { cat; echo "* * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send Hey "; } | crontab -
-//crontab -l | { cat; echo "* * * * *  XDG_RUNTIME_DIR=/run/user/1000 notify-send Hey "; } | crontab -
-   if (strcmp(command->name, "joker") == 0)
+			char* dirInput=strtok(command->args[0],"/");
+			while( dirInput != NULL ) {
+				if(chdir(dirInput)==-1){
+					//Directory doesn't exist. Create directory
+					mkdir(dirInput, 0755);
+					chdir(dirInput);
+				}
+				dirInput = strtok(NULL, "/");
+			}
+			return SUCCESS;
+		}
+	}
+	//JOKER
+	//curl -H "Accept: text/plain" https://icanhazdadjoke.com/
+	//crontab -l | { cat; echo "* * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send Hey "; } | crontab -
+	//crontab -l | { cat; echo "* * * * *  XDG_RUNTIME_DIR=/run/user/1000 notify-send Hey "; } | crontab -
+	if (strcmp(command->name, "joker") == 0)
 	{
-	   if (command->arg_count >= 0)
+		if (command->arg_count >= 0)
 		{
-		pid_t pidNew = fork();
+			pid_t pidNew = fork();
 
-	if (pidNew == 0) // child
-	{
-		char path[1000]= "/usr/bin/curl";
-		char *argument[]={"/usr/bin/curl","-H","Accept: text/plain","https://icanhazdadjoke.com/","-o", "joke.txt",NULL};
-		execv(path,argument);
+			if (pidNew == 0) // child
+			{
+				char path[1000]= "/usr/bin/curl";
+				char *argument[]={"/usr/bin/curl","-H","Accept: text/plain","https://icanhazdadjoke.com/","-o", "joke.txt",NULL};
+				execv(path,argument);
+			}
+			else{
+				wait(NULL);
+				pid_t pidNewest = fork();
+				if(pidNewest==0){
+					char jokeLine[1000];
+					char joke[1000]="";
+					FILE *fPtr;
+					if ((fPtr = fopen("joke.txt","r")) == NULL){
+						printf("Could not open file");
+					}
+					while(fgets(jokeLine,sizeof(jokeLine),fPtr)){
+						strcat(joke,jokeLine);
+					}
+					fclose(fPtr);
+					char pathCron[1000]= "/usr/bin/crontab";
+					char write[1000]="*/15 * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send \"";
+					strcat(write,joke);
+					strcat(write,"\" \n");
+					char *argumentCron[]= {"/usr/bin/crontab","crontab.txt",NULL};
+					FILE *fPtr2;
+					if ((fPtr2 = fopen("crontab.txt","w")) == NULL){
+						printf("Could not open file");
+					}
+					fprintf(fPtr2,"%s",write);
+					fclose(fPtr2);
+					execv(pathCron,argumentCron);}
+				else{
+					wait(NULL);}	
+				//char *remove[]={"/usr/bin/rm","crontab.txt",NULL};
+				//execv("/usr/bin/rm",remove);
+			}
+			return SUCCESS;
 		}
-	else{
-	wait(NULL);
-		pid_t pidNewest = fork();
-		if(pidNewest==0){
-		char jokeLine[1000];
-		char joke[1000]="";
-		 FILE *fPtr;
-  		 					if ((fPtr = fopen("joke.txt","r")) == NULL){
-  		 					printf("Could not open file");
-  		 					}
-  		 					while(fgets(jokeLine,sizeof(jokeLine),fPtr)){
-  		 					strcat(joke,jokeLine);
-  		 					}
-   							fclose(fPtr);
-		printf("heres");
-		char pathCron[1000]= "/usr/bin/crontab";
-		char write[1000]="*/15 * * * *  XDG_RUNTIME_DIR=/run/user/$(id -u) notify-send \"";
-		strcat(write,joke);
-		strcat(write,"\" \n");
-		char *argumentCron[]= {"/usr/bin/crontab","crontab.txt",NULL};
-		printf("heee");
-		 FILE *fPtr2;
-  		 					if ((fPtr2 = fopen("crontab.txt","w")) == NULL){
-  		 					printf("Could not open file");
-  		 					}
-  		 					 fprintf(fPtr2,"%s",write);
-   							fclose(fPtr2);
-		execv(pathCron,argumentCron);}
-		else{
-		wait(NULL);}	
-		//char *remove[]={"/usr/bin/rm","crontab.txt",NULL};
-		//execv("/usr/bin/rm",remove);
-		}
-		return SUCCESS;
-      }
-   }
-   //AWESOME COMMANDS
-   //Aslıhan
-   //addtofiles: Adds the string (which is given as command line argument) to the last line of each regular file in that directory
-   //For example, you can add your name to each file easily using this command.
-   if (strcmp(command->name, "addtofiles") == 0)
+	}
+	//AWESOME COMMANDS
+	//Aslıhan
+	//addtofiles: Adds the string (which is given as command line argument) to the last line of each regular file in that directory
+	//For example, you can add your name to each file easily using this command.
+	if (strcmp(command->name, "addtofiles") == 0)
 	{
-	   if (command->arg_count > 0)
+		if (command->arg_count > 0)
 		{
 			DIR *dir;
 			struct dirent *dirElement;
@@ -560,148 +572,166 @@ int process_command(struct command_t *command)
 			if(dir){
 				while((dirElement=readdir(dir))!=NULL){
 					if(dirElement->d_type==8){
-						 FILE *fPtr;
-  		 					if ((fPtr = fopen(dirElement->d_name,"a")) == NULL){
-  		 					printf("Could not open file");
-  		 					}
-  		 					for(int i=0;i<command->arg_count;i++){
-  		 					 fprintf(fPtr,"\n %s",command->args[i]);
-  		 					 }
-   							fclose(fPtr);
-		
+						FILE *fPtr;
+						if ((fPtr = fopen(dirElement->d_name,"a")) == NULL){
+							printf("Could not open file");
+						}
+						for(int i=0;i<command->arg_count;i++){
+							fprintf(fPtr,"\n %s",command->args[i]);
+						}
+						fclose(fPtr);
+
 					}
 				}
 				closedir(dir);
 			}
-		      return SUCCESS;
-      }
-   }
-   //Begum
-   //morse: Given a .txt file name as command line argument, my awesome command will convert your files
-   //which contains the name into morse code and create a new file called morse_{name}.txt for you to see
-   // Please refer to the REPORT to see which characters are allowed in the .txt file
-	   if (strcmp(command->name, "morse") == 0)
-   {
-	   if (command->arg_count >0){
-       char *charMorse[] = {
-        ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---", 
-        "-.-", ".-..", "--", "-.", "---", ".--.", "--.-", ".-.", "...", "-", 
-        "..-", "...-", ".--", "-..-", "-.--", "--.." 
-        };
-        char *numMorse[]={
-        "-----", ".----", "..---", "...--", "....-",
-        ".....", "-....", "--...", "---..", "----."
-        };
-        
-        char special[127][127];
-        strcpy(special[38],".-...");
-        strcpy(special[39], ".----.");
-        strcpy(special[64], ".--.-.");
-        strcpy(special[41] , "-.--.-");
-        strcpy(special[40] , "-.--.");
-        strcpy(special[58] , "---...");
-        strcpy(special[44] , "--..--");
-        strcpy(special[61], "-...-");
-        strcpy(special[33] , "-.-.--");
-        strcpy(special[46] , ".-.-.-");
-        strcpy(special[45] , "-....-");
-        strcpy(special[37] , "------..-.-----");
-        strcpy(special[43],".-.-.");
-        strcpy(special[34] , ".-..-.");
-        strcpy(special[63],"..--..");
-        strcpy(special[47], "-..-.");
-        strcpy(special[59], "-.-.-.");
-        
-       if (command->arg_count > 0){
-           
-           FILE *fPtrTxt;
-           FILE *fPtrMorse;
-            DIR *dir;
-            struct dirent *dirElement;
-            dir=opendir(".");
-            if(dir){
-                while((dirElement=readdir(dir))!=NULL){
-                    if(strstr(dirElement->d_name,command->args[0])!=NULL && strstr(dirElement->d_name,"morse_")==NULL){
-                        char fileToOpen[100];
-                        strcpy(fileToOpen,dirElement->d_name);
-                        char morseTxt[100]= "morse_";
-                        strcat(morseTxt,fileToOpen);
-                    
-
-  if ((fPtrTxt = fopen(fileToOpen,"r")) == NULL || (fPtrMorse = fopen(morseTxt,"w"))== NULL){
-        printf("Could not open file\n");
-    }else {
-           char c;
-           c= fgetc(fPtrTxt);
-           while(c != EOF){
-         
-               if(isalpha(c)){
-                   fprintf(fPtrMorse,"%s ",charMorse[tolower(c)-'a']);
-          
-               }
-               else if(isdigit(c)){
-                   fprintf(fPtrMorse,"%s ",numMorse[c-'0']);
-               }
-               else if(c=='\n')
-               {
-                   fprintf(fPtrMorse,"%c",'\n');
-               }
-               else if(c==' ')
-               {
-                   fprintf(fPtrMorse,"%s","   ");
-               }else{
-                
-                fprintf(fPtrMorse,"%s ",special[(int) c]);
-               }
-               c= fgetc(fPtrTxt);
-    
-           }
-            fclose(fPtrTxt);
-            fclose(fPtrMorse);
-      }
-               }
-               
-           }
-
-        }
-        closedir(dir);
-    }
-    }
-   }
-	  
-	   if (strcmp(command->name, "pstraverse") == 0)
+			return SUCCESS;
+		}
+	}
+	//Begum
+	//morse: Given a .txt file name as command line argument, my awesome command will convert your files
+	//which contains the name into morse code and create a new file called morse_{name}.txt for you to see
+	// Please refer to the REPORT to see which characters are allowed in the .txt file
+	if (strcmp(command->name, "morse") == 0)
 	{
-	   if (command->arg_count > 0)
+		if (command->arg_count >0){
+			char *charMorse[] = {
+				".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---", 
+				"-.-", ".-..", "--", "-.", "---", ".--.", "--.-", ".-.", "...", "-", 
+				"..-", "...-", ".--", "-..-", "-.--", "--.." 
+			};
+			char *numMorse[]={
+				"-----", ".----", "..---", "...--", "....-",
+				".....", "-....", "--...", "---..", "----."
+			};
+
+			char special[127][127];
+			strcpy(special[38],".-...");
+			strcpy(special[39], ".----.");
+			strcpy(special[64], ".--.-.");
+			strcpy(special[41] , "-.--.-");
+			strcpy(special[40] , "-.--.");
+			strcpy(special[58] , "---...");
+			strcpy(special[44] , "--..--");
+			strcpy(special[61], "-...-");
+			strcpy(special[33] , "-.-.--");
+			strcpy(special[46] , ".-.-.-");
+			strcpy(special[45] , "-....-");
+			strcpy(special[37] , "------..-.-----");
+			strcpy(special[43],".-.-.");
+			strcpy(special[34] , ".-..-.");
+			strcpy(special[63],"..--..");
+			strcpy(special[47], "-..-.");
+			strcpy(special[59], "-.-.-.");
+
+			if (command->arg_count > 0){
+
+				FILE *fPtrTxt;
+				FILE *fPtrMorse;
+				DIR *dir;
+				struct dirent *dirElement;
+				dir=opendir(".");
+				if(dir){
+					while((dirElement=readdir(dir))!=NULL){
+						if(strstr(dirElement->d_name,command->args[0])!=NULL && strstr(dirElement->d_name,"morse_")==NULL){
+							char fileToOpen[100];
+							strcpy(fileToOpen,dirElement->d_name);
+							char morseTxt[100]= "morse_";
+							strcat(morseTxt,fileToOpen);
+
+
+							if ((fPtrTxt = fopen(fileToOpen,"r")) == NULL || (fPtrMorse = fopen(morseTxt,"w"))== NULL){
+								printf("Could not open file\n");
+							}else {
+								char c;
+								c= fgetc(fPtrTxt);
+								while(c != EOF){
+
+									if(isalpha(c)){
+										fprintf(fPtrMorse,"%s ",charMorse[tolower(c)-'a']);
+
+									}
+									else if(isdigit(c)){
+										fprintf(fPtrMorse,"%s ",numMorse[c-'0']);
+									}
+									else if(c=='\n')
+									{
+										fprintf(fPtrMorse,"%c",'\n');
+									}
+									else if(c==' ')
+									{
+										fprintf(fPtrMorse,"%s","   ");
+									}else{
+
+										fprintf(fPtrMorse,"%s ",special[(int) c]);
+									}
+									c= fgetc(fPtrTxt);
+
+								}
+								fclose(fPtrTxt);
+								fclose(fPtrMorse);
+							}
+						}
+
+					}
+
+				}
+				closedir(dir);
+			}
+		}
+	}
+
+	if (strcmp(command->name, "pstraverse") == 0)
+	{
+		if (command->arg_count > 0)
 		{
-		char input[100];
-		char pidStr[100];
-		char bd[100];
-		char opti[100];
-		char optioStr[100];
-		long pidin=strtol(command->args[1],NULL,10);
-		int optio=0;
-		sprintf(pidStr,"%d",(int)pidin);
-		pid_t pidCh=fork();
-		if(pidCh==0){
-		strcpy(input,"pidin=");
-		strcat(input,pidStr);
-		strcpy(bd,command->args[0]);
-		if(bd[1]=='b'){
-		optio=0;
-		}
-		else if(bd[1]=='d'){
-		optio=1;
-		}
-		sprintf(optioStr,"%d",(int)optio);
-		strcpy(opti,"opti=");
-		strcat(opti,optioStr);
-		char *insmod[] = {"/usr/bin/sudo","insmod","pstraverse_module.ko",input,opti,NULL};
-		execv(insmod[0],insmod);
-		}
-		else{
-		wait(NULL);
-		}
-		return SUCCESS;
+			char input[100];
+			char pidStr[100];
+			char bd[100];
+			char opti[100];
+			char optioStr[100];
+			long pidin=strtol(command->args[0],NULL,10);
+			int optio=0;
+			sprintf(pidStr,"%d",(int)pidin);
+			strcpy(input,"pidin=");
+				strcat(input,pidStr);
+				strcpy(bd,command->args[1]);
+				if(bd[1]=='b'){
+					optio=0;
+				}
+				else if(bd[1]=='d'){
+					optio=1;
+				}
+				sprintf(optioStr,"%d",(int)optio);
+				strcpy(opti,"opti=");
+				strcat(opti,optioStr);
+			if(moduleLoaded==0){
+			moduleLoaded=1;
+				
+			pid_t pidCh=fork();
+			if(pidCh==0){
+				char *make[] = {"/usr/bin/make",NULL};
+				execv(make[0],make);
+			}
+			else{
+				wait(NULL);
+							pid_t pidChi=fork();
+				if(pidChi==0){
+				char *insmod[] = {"/usr/bin/sudo","insmod","pstraverse_module.ko",input,opti,NULL};
+				execv(insmod[0],insmod);}
+				else{
+				wait(NULL);
+				}
+			}
+
+			}
+			else{
+			//ioctl
+			fd = open("/dev/my_device", O_RDWR);
+			ioctl(dev,RD_VALUE,&pidin)
+			ioctl(dev,RD_VALUE,&opti)
+			}
+			return SUCCESS;
 		}}
 	pid_t pid = fork();
 
@@ -752,12 +782,12 @@ void recursive_filesearch(char* search,char* dirNew){
 	dir=opendir(dirNew);
 
 	if(!dir){
-	exit(0);
+		exit(0);
 	}
 	if(dir){
 		while((dirElement=readdir(dir))!=NULL){
 			if(strstr(dirElement->d_name,search)!=NULL){
-			printf("%s/%s \n",dirNew,dirElement->d_name);
+				printf("%s/%s \n",dirNew,dirElement->d_name);
 			}	
 			if(dirElement->d_type==4 && strcmp(dirElement->d_name, "..") != 0 && strcmp(dirElement->d_name, ".") != 0){
 				strcpy(directory,dirNew);
@@ -765,7 +795,7 @@ void recursive_filesearch(char* search,char* dirNew){
 				strcat(directory,dirElement->d_name);
 				recursive_filesearch(search,directory);
 			}
-		
+
 		}
 		closedir(dir);
 	}
@@ -779,20 +809,20 @@ void open_recursive_filesearch(char* search,char* dirNew){
 	dir=opendir(dirNew);
 
 	if(!dir){
-	exit(0);
+		exit(0);
 	}
 	if(dir){
 		while((dirElement=readdir(dir))!=NULL){
 
 			if(strstr(dirElement->d_name,search)!=NULL){
 				if(dirNew[1]!='/'){
-				openFile(dirElement->d_name);
+					openFile(dirElement->d_name);
 				}
 				else{
-				strcpy(opendirectory,dirNew);
-				strcat(opendirectory,"/");
-				strcat(opendirectory,dirElement->d_name);
-				openFile(opendirectory);
+					strcpy(opendirectory,dirNew);
+					strcat(opendirectory,"/");
+					strcat(opendirectory,dirElement->d_name);
+					openFile(opendirectory);
 				}
 				printf("%s/%s \n",dirNew,dirElement->d_name);
 
@@ -803,7 +833,7 @@ void open_recursive_filesearch(char* search,char* dirNew){
 				strcat(directory2,dirElement->d_name);
 				open_recursive_filesearch(search,directory2);
 			}
-		
+
 		}	
 		closedir(dir);
 	}
@@ -812,63 +842,62 @@ void openFile(char *fileName){
 	pid_t pid;
 	pid = fork();
 	if (pid == 0) {
-	execlp("xdg-open", "xdg-open", fileName, NULL);
+		execlp("xdg-open", "xdg-open", fileName, NULL);
 	}
 	else if (pid > 0) {
 		wait(NULL);
 	}
 }
 void readCdh(){
-        int count = 10;
-    if(recentCd->size<10){
-    count=recentCd->size;
-    }
-    int arrSize = 0;
-    int size=count;
-    
-    while(arrSize<=recentCd->size -1 && count>0) {
-         printf("%c %d) %s\n",'a'+count-1,count ,recentCd->recentArr[recentCd->size-size+arrSize]);
-         count --;
-         arrSize ++;
-    }
+	int count = 10;
+	if(recentCd->size<10){
+		count=recentCd->size;
+	}
+	int arrSize = 0;
+	int size=count;
+
+	while(arrSize<=recentCd->size -1 && count>0) {
+		printf("%c %d) %s\n",'a'+count-1,count ,recentCd->recentArr[recentCd->size-size+arrSize]);
+		count --;
+		arrSize ++;
+	}
 
 }
 
 void saveCdh(){
- FILE *fPtrCdh;
- if ((fPtrCdh = fopen("savedCdh.txt","w")) == NULL ){
-  printf("Could not open file\n");
- }else {
-  int count = 10;
-    if(recentCd->size<10){
-    count=recentCd->size;
-    }
-    int arrSize = 0;
-    int size=count;
-    
-    while(arrSize<=recentCd->size -1 && count>0) {
-    fprintf(fPtrCdh, "%s\n", recentCd->recentArr[recentCd->size-size+arrSize]);
-         count --;
-         arrSize ++;
-    }
-    fclose(fPtrCdh);
- }
+	FILE *fPtrCdh;
+	if ((fPtrCdh = fopen("savedCdh.txt","w")) == NULL ){
+		printf("Could not open file\n");
+	}else {
+		int count = 10;
+		if(recentCd->size<10){
+			count=recentCd->size;
+		}
+		int arrSize = 0;
+		int size=count;
+
+		while(arrSize<=recentCd->size -1 && count>0) {
+			fprintf(fPtrCdh, "%s\n", recentCd->recentArr[recentCd->size-size+arrSize]);
+			count --;
+			arrSize ++;
+		}
+		fclose(fPtrCdh);
+	}
 
 }
 
 void loadCdh(){
- FILE *fPtrCdh;
- char line[100];
- 
- if ((fPtrCdh = fopen("savedCdh.txt","r")) == NULL ){
-	 printf("No cd history");
- }else {
+	FILE *fPtrCdh;
+	char line[100];
 
-while(fgets(line,sizeof(line),fPtrCdh)){
-line[strlen(line) - 1] = '\0';
-strcpy(*(recentCd->recentArr+recentCd->size), line);
-       recentCd->size=  recentCd->size+1;
-}
-fclose(fPtrCdh);
-}
+	if ((fPtrCdh = fopen("savedCdh.txt","r")) == NULL ){
+	}else {
+
+		while(fgets(line,sizeof(line),fPtrCdh)){
+			line[strlen(line) - 1] = '\0';
+			strcpy(*(recentCd->recentArr+recentCd->size), line);
+			recentCd->size=  recentCd->size+1;
+		}
+		fclose(fPtrCdh);
+	}
 }

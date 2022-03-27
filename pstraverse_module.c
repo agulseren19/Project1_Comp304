@@ -20,45 +20,80 @@ module_param(opti,int,0);
 //static struct cdev my_cdev;
 static int DFS(struct task_struct *taskInput);
 static int BFS(struct task_struct *taskInput);
-//void DFS(struct task_struct *taskInput);
-//static struct file_operations fops = 
-//{
-//	.owner	= THIS_MODULE,
-//};
-static int DFS(struct task_struct *taskInput){	
-struct list_head *list;
-list_for_each(list, &taskInput->children) {
-struct task_struct *taskStru;
-printk(KERN_INFO"here");
-   taskStru = list_entry(list, struct task_struct, sibling);
-   printk(KERN_INFO "PID: [%d] NAME: [%s]",taskStru->pid,taskStru->comm);
-   DFS(taskStru);
-}
 
-return 0;
+static struct class *dev_class;
+static struct cdev my_cdev;
+
+static struct file_operations fops = 
+{
+	.owner	= THIS_MODULE,
+	.unlocked_ioctl=my_ioctl
+
+};
+
+static int DFS(struct task_struct *taskInput){	
+	struct list_head *list;
+	list_for_each(list, &taskInput->children) {
+		struct task_struct *taskStru;
+		taskStru = list_entry(list, struct task_struct, sibling);
+		printk(KERN_INFO "PID: [%d] NAME: [%s]",taskStru->pid,taskStru->comm);
+		DFS(taskStru);
+	}
+
+	return 0;
 }
 static int BFS(struct task_struct *taskInput){	
-struct list_head *list;
-list_for_each(list, &taskInput->children) {
-struct task_struct *taskStru;
-printk(KERN_INFO"here");
-   taskStru = list_entry(list, struct task_struct, sibling);
-   BFS(taskStru);
-   printk(KERN_INFO "PID: [%d] NAME: [%s]",taskStru->pid,taskStru->comm);
-}
+	struct list_head *list;
+	list_for_each(list, &taskInput->children) {
+		struct task_struct *taskStru;
+		taskStru = list_entry(list, struct task_struct, sibling);
+		BFS(taskStru);
+		printk(KERN_INFO "PID: [%d] NAME: [%s]",taskStru->pid,taskStru->comm);
+	}
 
-return 0;
+	return 0;
 }
 
 static int __init my_module_init(void){
+	if((alloc_chrdev_region(&dev, 0, 1, "my_Dev")) < 0) {
+		printk(KERN_INFO"Cannot allocate the major number...\n");
+	}
+
+	printk(KERN_INFO"Major = %d Minor =  %d..\n", MAJOR(dev),MINOR(dev));
+
+	/* creating cdev structure*/
+	cdev_init(&my_cdev, &fops);
+
+	/* adding character device to the system */
+	if((cdev_add(&my_cdev, dev, 1)) < 0) {
+		goto r_class;
+	}	 
+
+	/* creating struct class */
+	if((dev_class =  class_create(THIS_MODULE, "my_class")) == NULL) {
+		goto r_class;
+	}
+
+	/* creating device */
+
+	if((device_create(dev_class, NULL, dev, NULL, "my_device")) == NULL) {
+		goto r_device;
+	}
+
 	struct task_struct *taskParent;
 	printk(KERN_INFO"Loading \n");
 	taskParent=pid_task(find_vpid(pidin),PIDTYPE_PID);
+	printk(KERN_INFO "ROOTPID: [%d] NAME: [%s]",taskParent->pid,taskParent->comm);
 	if(opti==0){
-	BFS(taskParent);}
-		if(opti==1){
-	DFS(taskParent);}
+		BFS(taskParent);}
+	if(opti==1){
+		DFS(taskParent);}
 	return 0;
+}
+static long int my_ioctl(struct file *file, unsigned cmd, unsigned long arg){
+switch(cmd){
+case RD_VALUE:
+	if(copy_to_user((int32_t *) arg,&pidin,sizeof(pidin)))
 }
 
 void __exit rmmodule(void) {
