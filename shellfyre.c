@@ -11,7 +11,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include<sys/ioctl.h>
+#include <fcntl.h>
 
+#define RD_VALUE _IOR('a','b',int32_t*)
+#define WR_VALUE _IOW('a','a',int32_t*)
 void recursive_filesearch(char* search,char* dirNew);
 void open_recursive_filesearch(char* search,char* dirNew);
 void openFile(char *fileName);
@@ -19,6 +23,7 @@ void openFile(char *fileName);
 void saveCdh();
 void loadCdh();
 
+int fd;
 const char *sysname = "shellfyre";
 char currentDir[100];
 int moduleLoaded=0;
@@ -727,9 +732,10 @@ int process_command(struct command_t *command)
 			}
 			else{
 			//ioctl
-			fd = open("/dev/my_device", O_RDWR);
-			ioctl(dev,RD_VALUE,&pidin)
-			ioctl(dev,RD_VALUE,&opti)
+				fd = open("/dev/my_device", O_RDWR);
+				ioctl(fd,WR_VALUE,(int32_t*) &pidin);
+				ioctl(fd,WR_VALUE,(int32_t*) &optio);
+				close(fd);
 			}
 			return SUCCESS;
 		}}
