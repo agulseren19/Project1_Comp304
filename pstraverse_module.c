@@ -122,7 +122,6 @@ static int __init my_module_init(void){
 	struct task_struct *taskParent;
 	printk(KERN_INFO"Loading \n");
 	taskParent=pid_task(find_vpid(pidin),PIDTYPE_PID);
-	printk(KERN_INFO "ROOTPID: [%d] NAME: [%s]",taskParent->pid,taskParent->comm);
 	if(opti==0){
 		BFS(taskParent,0);
 		printBFS();
@@ -168,7 +167,6 @@ else if (repeat == 1){
 	
                         	struct task_struct *taskParent;
 				taskParent=pid_task(find_vpid(newpid),PIDTYPE_PID);
-				printk(KERN_INFO "ROOTPID: [%d] NAME: [%s]\n",taskParent->pid,taskParent->comm);
                         	if(newopt==1){
 				DFS(taskParent);
 				
