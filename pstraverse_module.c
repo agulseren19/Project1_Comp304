@@ -39,6 +39,7 @@ static int levelArr[100];
 static int size =0;
 static int pidArr[100];
 int maxLevel =0;
+int isroot=1;
 
 static struct file_operations fops = 
 {
@@ -65,16 +66,21 @@ static int BFS(struct task_struct *taskInput, int level){
 	
 	struct list_head *list;
 	struct task_struct *taskStru;
-	
+	int currentlev=level;
 	pidArr[size]=taskInput->pid;
-	levelArr[size] = level;
+	levelArr[size] = currentlev;
 	strcpy(pidName[size],taskInput->comm);
 	size++;
+	if(level > maxLevel) maxLevel=currentlev;
+	if(isroot){
+	currentlev++;
+	isroot=0;
+	}
 	
-	if(level > maxLevel) maxLevel=level;
+
 	list_for_each(list, &taskInput->children) {
 		taskStru = list_entry(list, struct task_struct, sibling);
-		BFS(taskStru,level+1);
+		BFS(taskStru,currentlev+1);
 	}
 	
 	return 0;
@@ -88,9 +94,13 @@ static void printBFS (void){
 		for (j=0; j<size; j++){
 			if(levelArr[j]==i){
 				printk(KERN_INFO "PID: [%d] NAME: [%s]\n",pidArr[j],pidName[j]);
+				
 			}
 		}
 	}
+	maxLevel=0;
+	size=0;
+	
 }
 
 static int __init my_module_init(void){
@@ -123,8 +133,14 @@ static int __init my_module_init(void){
 	printk(KERN_INFO"Loading \n");
 	taskParent=pid_task(find_vpid(pidin),PIDTYPE_PID);
 	if(opti==0){
+	/* pidName=kzalloc(1024,GFP_KERNEL);
+	levelArr=kzalloc(1024,GFP_KERNEL);
+	pidArr=kzalloc(1024,GFP_KERNEL); */
 		BFS(taskParent,0);
 		printBFS();
+/*		kfree(pidName);
+		kfree(levelArr);
+		kfree(pidArr); */
 	}
 	if(opti==1){
 		DFS(taskParent);
@@ -172,10 +188,17 @@ else if (repeat == 1){
 				
 				}
 				else if(newopt==0){
-				
-					BFS(taskParent,0);
-					printBFS();
-				
+					isroot=1;
+		/*			pidName=kzalloc(1024,GFP_KERNEL);
+				levelArr=kzalloc(1024,GFP_KERNEL);
+				pidArr=kzalloc(1024,GFP_KERNEL);
+		*/
+		BFS(taskParent,0);
+		printBFS();
+		/*kfree(pidName);
+		kfree(levelArr);
+		kfree(pidArr);
+		*/		
 				}
 }	
                         break;
